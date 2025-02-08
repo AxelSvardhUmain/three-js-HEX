@@ -25,8 +25,8 @@ export class DetailScene {
         const nameBubble = this.createBubble(0.5, 0x00ff00);
         const valueBubble = this.createBubble(0.5, 0x0000ff);
 
-        this.addTextSprite(this.bubbleData.label, nameBubble.position.x, nameBubble.position.y, nameBubble.position.z + 0.5);
-        this.addTextSprite(this.bubbleData.value.toString(), valueBubble.position.x, valueBubble.position.y, valueBubble.position.z + 0.5);
+        this.addTextSprite(this.bubbleData.name, nameBubble.position.x, nameBubble.position.y, nameBubble.position.z + 0.5);
+        this.addTextSprite(this.bubbleData.size.toString(), valueBubble.position.x, valueBubble.position.y, valueBubble.position.z + 0.5);
 
         this.animateBubbles(mainBubble, nameBubble, valueBubble);
     }
@@ -84,15 +84,15 @@ export class DetailScene {
         bubbles.forEach((bubble, index) => {
             gsap.to(bubble.position, { 
                 y: bubble.position.y - this.config.startY, 
-                duration: this.config[`${index === 0 ? 'main' : index === 1 ? 'name' : 'value'}Bubble`].duration, 
-                ease: this.config[`${index === 0 ? 'main' : index === 1 ? 'name' : 'value'}Bubble`].ease, 
-                delay: this.config[`${index === 0 ? 'main' : index === 1 ? 'name' : 'value'}Bubble`].delay 
+                duration: this.config[`${index === 0 ? 'main' : index === 1 ? 'name' : 'size'}Bubble`].duration, 
+                ease: this.config[`${index === 0 ? 'main' : index === 1 ? 'name' : 'size'}Bubble`].ease, 
+                delay: this.config[`${index === 0 ? 'main' : index === 1 ? 'name' : 'size'}Bubble`].delay 
             });
 
             gsap.to(bubble.material, { 
                 opacity: 1, 
                 duration: this.config.fadeIn.duration, 
-                delay: this.config[`${index === 0 ? 'main' : index === 1 ? 'name' : 'value'}Bubble`].delay 
+                delay: this.config[`${index === 0 ? 'main' : index === 1 ? 'name' : 'size'}Bubble`].delay 
             });
         });
     }

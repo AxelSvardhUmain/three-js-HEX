@@ -64,6 +64,8 @@ export class MainScene {
     update() {
         // You can add any continuous updates here, like rotating the bubbles
         this.bubbles.forEach(bubble => {
+            bubble.visible = true;
+            bubble.material.opacity = 1;
             bubble.rotation.y += 0.01;
         });
     }

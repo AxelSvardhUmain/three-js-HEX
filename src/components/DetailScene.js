@@ -1,11 +1,14 @@
 // DetailScene.js
 import * as THREE from 'three';
+import { gsap } from 'gsap';
 
 export class DetailScene {
-    constructor(bubbleData, color) {
+    constructor(bubbleData, color, config) {
         this.scene = new THREE.Scene();
         this.bubbleData = bubbleData;
         this.color = color;
+        this.config = config;
+        this.bubbles = [];
         this.init();
     }
 
@@ -18,16 +21,45 @@ export class DetailScene {
         directionalLight.position.set(1, 1, 1);
         this.scene.add(directionalLight);
 
-        // Add sphere with the same color as the clicked sphere
-        const sphereGeometry = new THREE.SphereGeometry(1, 32, 32);
-        const sphereMaterial = new THREE.MeshPhongMaterial({color: this.color});
-        const sphere = new THREE.Mesh(sphereGeometry, sphereMaterial);
-        sphere.position.set(0, 0, 0);
-        this.scene.add(sphere);
+        const mainBubble = this.createBubble(1, this.color);
+        const nameBubble = this.createBubble(0.5, 0x00ff00);
+        const valueBubble = this.createBubble(0.5, 0x0000ff);
 
-        // Add text using sprite
-        this.addTextSprite(`Label: ${this.bubbleData.label}`, -2, 2, -5);
-        this.addTextSprite(`Value: ${this.bubbleData.value}`, -2, 1, -5);
+        this.addTextSprite(this.bubbleData.label, nameBubble.position.x, nameBubble.position.y, nameBubble.position.z + 0.5);
+        this.addTextSprite(this.bubbleData.value.toString(), valueBubble.position.x, valueBubble.position.y, valueBubble.position.z + 0.5);
+
+        this.animateBubbles(mainBubble, nameBubble, valueBubble);
+    }
+
+    createBubble(radius, color) {
+        const geometry = new THREE.SphereGeometry(radius, 32, 32);
+        const material = new THREE.MeshPhongMaterial({ color: color, transparent: true, opacity: 0 });
+        const bubble = new THREE.Mesh(geometry, material);
+        
+        let colliding = true;
+        while (colliding) {
+            bubble.position.set(
+                (Math.random() - 0.5) * 10,
+                this.config.startY + (Math.random() - 0.5) * 10,
+                (Math.random() - 0.5) * 10
+            );
+            colliding = this.checkCollision(bubble);
+        }
+
+        this.scene.add(bubble);
+        this.bubbles.push(bubble);
+        return bubble;
+    }
+
+    checkCollision(newBubble) {
+        for (let existingBubble of this.bubbles) {
+            const distance = newBubble.position.distanceTo(existingBubble.position);
+            const minDistance = newBubble.geometry.parameters.radius + existingBubble.geometry.parameters.radius;
+            if (distance < minDistance) {
+                return true;
+            }
+        }
+        return false;
     }
 
     addTextSprite(message, x, y, z) {
@@ -41,18 +73,35 @@ export class DetailScene {
         const spriteMaterial = new THREE.SpriteMaterial({ map: texture });
         const sprite = new THREE.Sprite(spriteMaterial);
         
-        sprite.scale.set(2, 1, 1);
+        sprite.scale.set(1, 0.5, 1);
         sprite.position.set(x, y, z);
         
         this.scene.add(sprite);
     }
 
+    animateBubbles(mainBubble, nameBubble, valueBubble) {
+        const bubbles = [mainBubble, nameBubble, valueBubble];
+        bubbles.forEach((bubble, index) => {
+            gsap.to(bubble.position, { 
+                y: bubble.position.y - this.config.startY, 
+                duration: this.config[`${index === 0 ? 'main' : index === 1 ? 'name' : 'value'}Bubble`].duration, 
+                ease: this.config[`${index === 0 ? 'main' : index === 1 ? 'name' : 'value'}Bubble`].ease, 
+                delay: this.config[`${index === 0 ? 'main' : index === 1 ? 'name' : 'value'}Bubble`].delay 
+            });
+
+            gsap.to(bubble.material, { 
+                opacity: 1, 
+                duration: this.config.fadeIn.duration, 
+                delay: this.config[`${index === 0 ? 'main' : index === 1 ? 'name' : 'value'}Bubble`].delay 
+            });
+        });
+    }
+
     update() {
-        // You can add any update logic here, like rotating the sphere
-        const sphere = this.scene.children.find(child => child instanceof THREE.Mesh && child.geometry instanceof THREE.SphereGeometry);
-        if (sphere) {
-            sphere.rotation.x += 0.01;
-            sphere.rotation.y += 0.01;
-        }
+        // Rotate the bubbles
+        this.bubbles.forEach((bubble, index) => {
+            bubble.rotation.x += 0.01 * (index + 1);
+            bubble.rotation.y += 0.01 * (index + 1);
+        });
     }
 }

@@ -29,6 +29,13 @@
             background-color: rgba(255, 255, 255, 0.2);
             color: #ffff00;
         }
+        /* REFACTOR can be made much better */
+        /* Hover effect only for main view */
+        .detail-view .sphere-item:not(.sphere-item:hover) {
+            visibility: none;
+            background-color: transparent;
+            color: white;
+        }
     </style>
 </head>
 <body>

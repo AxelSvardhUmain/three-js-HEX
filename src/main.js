@@ -3,6 +3,44 @@ import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls';
 import { gsap } from 'gsap';
 import { DetailScene } from './components/DetailScene';
 import { MainScene } from './components/MainScene';
+// import { SceneTransitioner } from './transitions/SceneTranstion';
+
+// Transition Config
+const transitionConfig = {
+    camera: {
+        transitionDuration: 1.5,
+        transitionEase: "power2.inOut",
+        peakY: -100, // How high the camera should go during transition
+        finalPosition: { x: 0, y: 0, z: 17 },
+        finalDuration: 1,
+        finalEase: "power2.out"
+    },
+    mainSceneFadeOut: {
+        duration: 0.5,
+        ease: "power2.inOut"
+    },
+    detailSceneBubbles: {
+        startY: 60, // Start bubbles higher than the peak camera position
+        mainBubble: {
+            delay: 0.2,
+            duration: 3,
+            ease: "power2.out"
+        },
+        nameBubble: {
+            delay: 0.5,
+            duration: 3,
+            ease: "power2.out"
+        },
+        valueBubble: {
+            delay: 0.7,
+            duration: 3,
+            ease: "power2.out"
+        },
+        fadeIn: {
+            duration: 0.5
+        }
+    }
+};
 
 // Set up the renderer
 const renderer = new THREE.WebGLRenderer();
@@ -50,7 +88,7 @@ const maxBubbleSize = 2;
 
 // Create scenes
 const mainScene = new MainScene(data, chartSize, maxBubbleSize);
-// mainScene.scene.add(cameraRig);
+mainScene.scene.add(cameraRig);
 let detailScene = null;
 
 let currentScene = mainScene;
@@ -105,17 +143,27 @@ const mouse = new THREE.Vector2();
 // Event listener for mouse clicks
 window.addEventListener('click', onMouseClick, false);
 
+// Modify the onMouseClick function
 function onMouseClick(event) {
     mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
     mouse.y = - (event.clientY / window.innerHeight) * 2 + 1;
 
     raycaster.setFromCamera(mouse, camera);
 
-    const intersects = raycaster.intersectObjects(mainScene.bubbles);
-
-    if (intersects.length > 0) {
-        const clickedBubble = intersects[0].object;
-        transitionToDetailScene(clickedBubble);
+    if (currentScene === mainScene) {
+        const intersects = raycaster.intersectObjects(mainScene.bubbles);
+        if (intersects.length > 0) {
+            const clickedBubble = intersects[0].object;
+            transitionToDetailScene(clickedBubble);
+        }
+    } else if (currentScene === detailScene) {
+        const intersects = raycaster.intersectObjects(detailScene.scene.children);
+        if (intersects.length > 0) {
+            const clickedObject = intersects[0].object;
+            if (clickedObject.userData.isBackButton) {
+                transitionToMainScene();
+            }
+        }
     }
 }
 
@@ -144,118 +192,112 @@ function onMouseMove(event) {
 window.addEventListener('mousemove', onMouseMove, false);
 
 
+let isTransitioning = false;
+
 function transitionToDetailScene(bubble) {
+    if (isTransitioning) return;
+    isTransitioning = true;
     controls.enabled = false;
     
     const bubbleColor = bubble.material.color.getHex();
     const bubbleData = bubble.userData;
 
-    detailScene = new DetailScene(bubbleData, bubbleColor);
+    detailScene = new DetailScene(bubbleData, bubbleColor, transitionConfig.detailSceneBubbles, transitionToMainScene);
 
+    sidebar.classList.remove('main-view');
+    sidebar.classList.add('detail-view');
+
+    // Move camera up
     gsap.to(camera.position, {
-        x: 0,
-        y: 0,
-        z: 10,
-        duration: 1,
-        ease: "power2.inOut",
+        y: transitionConfig.camera.peakY,
+        duration: transitionConfig.camera.transitionDuration,
+        ease: transitionConfig.camera.transitionEase,
         onUpdate: () => camera.lookAt(0, 0, 0),
         onComplete: () => {
+            // Switch scenes
             currentScene = detailScene;
-            controls.enabled = true;
-            mainScene.scene.remove(cameraRig);
-            // sidebar.style.display = 'none'; // Hide sidebar in detail view
-        }
-    });
-    
+            mainScene.scene.visible = false;
+            detailScene.scene.visible = true;
 
-    gsap.to(mainScene.scene.children, {
-        opacity: 0,
-        duration: 0.5,
-        display: "none",
-        ease: "power2.inOut",
-        onStart: () => {
-            mainScene.scene.children.forEach(child => {
-                if (child instanceof THREE.Mesh) {
-                    child.material.transparent = true;
+            // Move camera to final position
+            gsap.to(camera.position, {
+                ...transitionConfig.camera.finalPosition,
+                duration: transitionConfig.camera.finalDuration,
+                ease: transitionConfig.camera.finalEase,
+                onUpdate: () => camera.lookAt(0, 0, 0),
+                onComplete: () => {
+                    controls.enabled = true;
+                    // updateSidebarForDetail(bubbleData);
+                    isTransitioning = false;
                 }
             });
         }
     });
-
-    gsap.fromTo(detailScene.scene.children, 
-        { opacity: 0, display: "none"},
-        { 
-            opacity: 1, 
-            duration: 0.5, 
-            delay: 0.5,
-            ease: "power2.inOut",
-            onStart: () => {
-                detailScene.scene.children.forEach(child => {
-                    if (child instanceof THREE.Mesh) {
-                        child.material.transparent = true;
-                    }
-                });
-            }
-        }
-    );
 }
 
 function transitionToMainScene() {
-    if (currentScene === mainScene) return;
+    if (currentScene === mainScene || isTransitioning) return;
+    isTransitioning = true;
     
     controls.enabled = false;
 
+    // Move camera up
     gsap.to(camera.position, {
-        x: 0,
-        y: chartSize / 2,
-        z: 20, // Use the initial camera distance
-        duration: 1,
-        ease: "power2.inOut",
+        y: transitionConfig.camera.peakY,
+        duration: transitionConfig.camera.transitionDuration,
+        ease: transitionConfig.camera.transitionEase,
         onUpdate: () => camera.lookAt(0, 0, 0),
         onComplete: () => {
+            // Switch scenes
             currentScene = mainScene;
-            controls.enabled = true;
-            mainScene.scene.add(cameraRig);
-            if (detailScene) {
-                detailScene.dispose();
-                detailScene = null;
-            }
-            sidebar.style.display = 'block'; // Show sidebar in main view
-        }
-    });
+            detailScene.scene.visible = false;
+            mainScene.scene.visible = true;
 
-        gsap.to(mainScene.scene.children, {
-        opacity: 0,
-        duration: 0.5,
-        ease: "power2.inOut",
-        onStart: () => {
-            mainScene.scene.children.forEach(child => {
-                if (child instanceof THREE.Mesh) {
-                    child.material.transparent = true;
+            // Move camera back to main scene position
+            gsap.to(camera.position, {
+                x: 0,
+                y: chartSize / 2,
+                z: 20, // Use the initial camera distance for main scene
+                duration: transitionConfig.camera.finalDuration,
+                ease: transitionConfig.camera.finalEase,
+                onUpdate: () => camera.lookAt(0, 0, 0),
+                onComplete: () => {
+                    controls.enabled = true;
+                    mainScene.scene.add(cameraRig);
+                    if (detailScene) {
+                        // detailScene.dispose();
+                        detailScene = null;
+                    }
+                    isTransitioning = false;
+                    
+                    // Recreate the main scene sidebar
+                    sidebar.innerHTML = ''; // Clear the sidebar
+                    createSidebar(); // Recreate the main scene sidebar
+                    sidebar.classList.remove('detail-view');
+                    sidebar.classList.add('main-view');
+                    
+                    // Make sure all bubbles are visible and interactive
+                    mainScene.bubbles.forEach(bubble => {
+                        bubble.visible = true;
+                        bubble.material.opacity = 1;
+                    });
                 }
             });
         }
     });
-
-    gsap.fromTo(detailScene.scene.children, 
-        { opacity: 0 },
-        { 
-            opacity: 1, 
-            duration: 0.5, 
-            delay: 0.5,
-            ease: "power2.inOut",
-            onStart: () => {
-                detailScene.scene.children.forEach(child => {
-                    if (child instanceof THREE.Mesh) {
-                        child.material.transparent = true;
-                    }
-                });
-            }
-        }
-    );
 }
 
-    // Add an event listener to go back to the main scene
+// Add an event listener to go back to the main scene
+window.addEventListener('keydown', (event) => {
+    if (event.key === 'Escape' && currentScene === detailScene) {
+        transitionToMainScene();
+        console.log('hello')
+    }
+});
+// Initialize the sidebar with main-view class
+sidebar.classList.add('main-view');
+
+// Add an event listener to go back to the main scene
 window.addEventListener('keydown', (event) => {
 if (event.key === 'Escape' && currentScene === detailScene) {
     transitionToMainScene();
@@ -267,7 +309,7 @@ function animate() {
     requestAnimationFrame(animate);
     controls.update();
 
-    if (currentScene === mainScene) {
+    if (currentScene === mainScene && !isTransitioning) {
         cameraRig.rotation.y += 0.0015;
         mainScene.update();
     } else if (detailScene) {

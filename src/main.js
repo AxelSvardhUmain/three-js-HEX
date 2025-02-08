@@ -45,6 +45,7 @@ const transitionConfig = {
 
 // Set up the renderer
 const renderer = new THREE.WebGLRenderer();
+renderer.setClearColor( 0x0b0b0b );
 renderer.setSize(window.innerWidth, window.innerHeight);
 document.body.appendChild(renderer.domElement);
 
@@ -55,7 +56,7 @@ const camera = new THREE.PerspectiveCamera(
   0.1,
   1000
 );
-camera.position.set(0, 5, 20);
+camera.position.set(0, 5, 55);
 
 // Set up the camera rig
 const cameraRig = new THREE.Group();
@@ -281,8 +282,8 @@ function transitionToMainScene() {
       // Move camera back to main scene position
       gsap.to(camera.position, {
         x: 0,
-        y: chartSize / 2,
-        z: 20, // Use the initial camera distance for main scene
+        y: 0,
+        z: 55, // Use the initial camera distance for main scene
         duration: transitionConfig.camera.finalDuration,
         ease: transitionConfig.camera.finalEase,
         onUpdate: () => camera.lookAt(0, 0, 0),
@@ -312,13 +313,6 @@ function transitionToMainScene() {
   });
 }
 
-// Add an event listener to go back to the main scene
-window.addEventListener("keydown", (event) => {
-  if (event.key === "Escape" && currentScene === detailScene) {
-    transitionToMainScene();
-    console.log("hello");
-  }
-});
 // Initialize the sidebar with main-view class
 sidebar.classList.add("main-view");
 
@@ -335,7 +329,7 @@ function animate() {
   controls.update();
 
   if (currentScene === mainScene && !isTransitioning) {
-    cameraRig.rotation.y += 0.0015;
+    cameraRig.rotation.y += 0.0005;
     mainScene.update();
   } else if (detailScene) {
     detailScene.update();
